@@ -1,0 +1,26 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Unzip all zips oldest to newest
+        run: |
+          git -c core.quotepath=off log --reverse --diff-filter=AM --name-only --pretty=format: -- '*.zip' | awk 'NF && !s[$0]++' | while IFS= read -r f; do [ -f "$f" ] && echo "unzip: $f" && unzip -o "$f"; done
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
+      - run: gradle assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GPS72-apk-${{ github.run_number }}
+          path: app/build/outputs/apk/debug/app-debug.apk
