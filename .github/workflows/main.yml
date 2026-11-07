@@ -9,9 +9,22 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Unzip all zips oldest to newest
+      - name: Pick the newest uploaded zip and unpack only it
         run: |
-          git -c core.quotepath=off log --reverse --diff-filter=AM --name-only --pretty=format: -- '*.zip' | awk 'NF && !s[$0]++' | while IFS= read -r f; do [ -f "$f" ] && echo "unzip: $f" && unzip -o "$f"; done
+          best=""
+          bt=0
+          while IFS= read -r f; do
+            t=$(git log -1 --format=%ct -- "$f")
+            [ -z "$t" ] && t=0
+            echo "found: $f (uploaded at $t)"
+            if [ "$t" -gt "$bt" ]; then bt=$t; best="$f"; fi
+          done < <(find . -name '*.zip' -not -path './.git/*')
+          echo "USING: $best"
+          unzip -q -o "$best"
+          echo "--- check ---"
+          grep -n "zxing" app/build.gradle || echo "NO zxing in build.gradle"
+          grep -c "importWps" app/src/main/java/com/example/gps72/GpsView.java || true
+          cat zipver.txt || true
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
